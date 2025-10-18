@@ -4,8 +4,7 @@ import pygame as pg
 
 from entity import Entity
 from button import Button, ClickableObject
-from event_listener import scaled_background
-from usefull_fonctions import image_loader
+from usefull_fonctions import image_loader, scaled_background
 
 pg.init()
 

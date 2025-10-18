@@ -8,10 +8,8 @@
 # Iportation de toutes les bibliotheques
 import pygame as pg
 
-from text_handler import Text
-from status_effect import StatusEffect
 from entity import Entity
-from usefull_fonctions import scale_by
+
 
 
 # === DISCLAIMER ===

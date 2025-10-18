@@ -49,7 +49,7 @@ class Enemy(Entity, pg.sprite.Sprite):
         # === Pathfinder ===
         self.path = []  # Chemin vers cible
         self.is_on_cell = True  # Verifie si le mob est sur une celule ou entre 2
-        self.last_seen_player_pos = None
+        self.last_seen_player_pos = ()
 
         # === Moving animation ===
         self.base_moving_time = 0.16
@@ -171,14 +171,40 @@ class Enemy(Entity, pg.sprite.Sprite):
             return self.path
         return [self.current_cell_pos]
 
-    def find_path(self, end_pos, mob_coordinates=[]) -> bool:
-        """Trouve le chemin le plus court entre la position du enemy et la cible"""
-        var = aStar(Entity.MAP, self.current_cell_pos, end_pos, mob_coordinates)
-        if var is not None:  # Si le chemin existe
-            self.path = var[1:-1]
-            return len(self.path) > 0
+    def find_path(self, end_pos, mob_cell_pos=[], ignore_last_pos=True) -> bool:
+        """Trouve le chemin le plus court entre la position de l'enemis et la cible"""
+        path = aStar(Entity.MAP, self.current_cell_pos, end_pos, mob_cell_pos)
+        if path is not None:  # Si le chemin existe
+            if ignore_last_pos :
+                self.path = path[1:-1]
+            else :
+                self.path = path[1:]
+            return len(self.path) > 2
         else:
             return False
+
+    def move_to(self, cell, mob_cell_pos, ignore_last_pos=True):
+        """Fait bouger le mob vers la cellule"""
+        if self.action_points >= self.dic_stats["movement_time"] :
+            # S'il existe un chemin
+            if (
+                self.find_path(cell, mob_cell_pos, ignore_last_pos)
+                and self.action_points >= self.dic_stats["movement_time"]
+            ):  
+                #self.previous_cell_pos = self.current_cell_pos
+                self.current_cell_pos = self.path.pop(1) 
+                # Change les positions des enemis dans mob_cell_pos
+                """
+                if self.previous_cell_pos in mob_cell_pos :
+                    mob_cell_pos.remove(self.previous_cell_pos)
+                    mob_cell_pos.append(self.current_cell_pos)
+                """
+                self.is_on_cell = False
+                self.animation_speed_multiplier = (
+                    self.action_points // self.dic_stats["movement_time"]
+                )
+                self.action_points -= self.dic_stats["movement_time"]
+                self.counter.start()
 
     # --- Position/Deplacement ---
     def get_pos(self):
@@ -208,13 +234,8 @@ class Enemy(Entity, pg.sprite.Sprite):
     def get_is_alive(self):
         return self.is_alive
 
-    def take_damage(self, attack_data):
-        """Aplique les degats brute.
-
-        Retourne les degats reelement infliges"""
-        raw_damage = attack_data[0]
-        penetration = attack_data[1]
-        precision = attack_data[2]
+    def take_damage(self, raw_damage, penetration, precision):
+        """Aplique les degats en fonction des stats de l'attaquant et du defenseur"""
         # Arrete le joueur
         self.is_moving = False
         # Dodge
@@ -275,9 +296,9 @@ class Enemy(Entity, pg.sprite.Sprite):
         self,
         deltatime,
         camera_gap,
-        player_current_cell:tuple,
-        action_points:int,
-        mob_coordinates,
+        player,
+        action_points: int,
+        mob_cell_pos:list[tuple],
         textgroup: pg.sprite.Group,
         dropped_item_group,
         cell_pos_seen,
@@ -293,10 +314,8 @@ class Enemy(Entity, pg.sprite.Sprite):
             textgroup.add(text)
         self.text_list.clear_updatable_text_list()
 
-        value_to_return = None
-        damage_to_player = None
-        is_a_valid_path = False
-
+        previous_cell_to_return = None
+        
         if cell_pos_seen is not None:
             self.is_seen = False
             if self.current_cell_pos in cell_pos_seen:
@@ -317,22 +336,27 @@ class Enemy(Entity, pg.sprite.Sprite):
 
         # S'IL EST SUR UNE CELLULE
         if self.is_on_cell:
-            if abs(player_current_cell[0] - self.current_cell_pos[0]) + abs(
-                player_current_cell[1] - self.current_cell_pos[1]
+            
+            player_cell_pos = player.current_cell_pos
+            
+            # Si le mob voit le joueur
+            if abs(player_cell_pos[0] - self.current_cell_pos[0]) + abs(
+                player_cell_pos[1] - self.current_cell_pos[1]
             ) <= self.dic_stats["vision"] and is_case_lookable(
-                Entity.MAP, self.current_cell_pos, player_current_cell
+                Entity.MAP, self.current_cell_pos, player_cell_pos
             ):
                 self.action_points += action_points
-                self.last_seen_player_pos = player_current_cell
+                self.last_seen_player_pos = player_cell_pos
 
+                # Verifie que le mob fait face au joueur et le pivote si besoins
                 if (
-                    player_current_cell[0] - self.current_cell_pos[0] > 0
+                    player_cell_pos[0] - self.current_cell_pos[0] > 0
                     and self.is_facing_left
                 ):
                     self.image = self.image_right
                     self.is_facing_left = False
                 elif (
-                    player_current_cell[0] - self.current_cell_pos[0] < 0
+                    player_cell_pos[0] - self.current_cell_pos[0] < 0
                     and not self.is_facing_left
                 ):
                     self.image = self.image_left
@@ -341,48 +365,38 @@ class Enemy(Entity, pg.sprite.Sprite):
                 # Si le mob peut ataquer
                 if (
                     self.dic_stats["attack_range"] > 1
-                    and abs(self.current_cell_pos[0] - player_current_cell[0])
-                    + abs(self.current_cell_pos[1] - player_current_cell[1])
+                    and abs(self.current_cell_pos[0] - player_cell_pos[0])
+                    + abs(self.current_cell_pos[1] - player_cell_pos[1])
                     <= self.dic_stats["attack_range"]
-                    or abs(self.current_cell_pos[0] - player_current_cell[0])
+                    or abs(self.current_cell_pos[0] - player_cell_pos[0])
                     <= self.dic_stats["attack_range"]
                     <= 1
-                    and abs(self.current_cell_pos[1] - player_current_cell[1])
+                    and abs(self.current_cell_pos[1] - player_cell_pos[1])
                     <= self.dic_stats["attack_range"]
                     <= 1
                 ):
-
-                    if (
-                        self.action_points >= self.dic_stats["attack_speed"]
-                    ):  # Si le mob a assez de point d'action
+                    # Si le mob a assez de point d'action
+                    if self.action_points >= self.dic_stats["attack_speed"]:
                         if is_case_lookable(
-                            Entity.MAP, self.current_cell_pos, player_current_cell
+                            Entity.MAP, self.current_cell_pos, player_cell_pos
                         ):
-                            damage_to_player = self.dic_stats["attack"]
+                            player.take_damage(self.dic_stats["attack"], self.dic_stats["penetration"], self.dic_stats["precision"])
                             self.action_points -= self.dic_stats["attack_speed"]
 
                 # Si le mob n'est pas a portee d'attaque
                 # S'il peut bouger
-                elif self.action_points >= self.dic_stats[
-                    "movement_time"
-                ] and is_case_lookable(
-                    Entity.MAP, self.current_cell_pos, player_current_cell
-                ):
-                    is_a_valid_path = self.find_path(
-                        player_current_cell, mob_coordinates
-                    )
-                    if (
-                        is_a_valid_path
-                        and self.action_points >= self.dic_stats["movement_time"]
-                    ):  # S'il existe un chemin
-                        self.current_cell_pos = self.path.pop(0)
-                        value_to_return = self.previous_cell_pos
-                        self.is_on_cell = False
-                        self.animation_speed_multiplier = (
-                            self.action_points // self.dic_stats["movement_time"]
-                        )
-                        self.action_points -= self.dic_stats["movement_time"]
-                        self.counter.start()
+                else :
+                    self.move_to(player_cell_pos, mob_cell_pos)
+
+            # Si le mob n'a pas de vision directe sur le joueur
+            elif self.last_seen_player_pos != ():
+                
+                if self.previous_cell_pos == self.last_seen_player_pos:
+                    self.last_seen_player_pos = ()
+                else:
+                    
+                    self.action_points += action_points
+                    self.move_to(self.last_seen_player_pos, mob_cell_pos, False)
 
         # S'IL N'EST PAS SUR UNE CELLULE
         else:
@@ -405,8 +419,14 @@ class Enemy(Entity, pg.sprite.Sprite):
             else:  # Lorsqu'il arrive sur une cellule
                 self.is_on_cell = True
                 self.dx, self.dy = 0, 0
+                # Change les positions des enemis dans mob_cell_pos
+                if self.previous_cell_pos in mob_cell_pos :
+                    mob_cell_pos.remove(self.previous_cell_pos)
+                    mob_cell_pos.append(self.current_cell_pos)
+                else :
+                    print(False, self.previous_cell_pos, self.current_cell_pos)
                 self.previous_cell_pos = self.current_cell_pos
-
+                    
         # Update la position (px) du mob
         self.rect.topleft = (
             (self.previous_cell_pos[0] * 32 + self.dx + camera_gap[0]) * Entity.zoom,
@@ -419,10 +439,3 @@ class Enemy(Entity, pg.sprite.Sprite):
         if action_points > 0:
             # Gere les effets de status
             self.add_stat(self.effects_handler.update())
-
-        # Retourne la valeur de la celule precedente pour qu'elle soit suprimee de mob_coordinates
-        return value_to_return, (
-            damage_to_player,
-            self.dic_stats["penetration"],
-            self.dic_stats["precision"],
-        )

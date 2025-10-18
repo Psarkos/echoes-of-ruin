@@ -19,7 +19,7 @@ def is_case_lookable(map, pos1, pos2):
         bool: True s'il n'y a aucun mur entre les deux cases 
               lorsque l'on trace une droite entre elles, False sinon
     """
-    if pos1[0] >= len(map[0]) and pos1[1] >= len(map) and pos2[0] >= len(map[0]) and pos2[1] >= len(map):
+    if pos1[0] >= len(map[0]) or pos1[1] >= len(map) or pos2[0] >= len(map[0]) or pos2[1] >= len(map):
         return False
     
     if pos1[0] == pos2[0]:

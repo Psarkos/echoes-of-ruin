@@ -106,8 +106,8 @@ class Text(Entity, pg.sprite.Sprite):
             self.image = add_outline_to_image(self.image, 1, border_color)
 
         # --- Duration ---
-        if duration is not None :
-            self.duration = duration
+        self.duration = duration
+        if self.duration is not None :
             self.counter = Counter(duration)
             self.counter.start()
     

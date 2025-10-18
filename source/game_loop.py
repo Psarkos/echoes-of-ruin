@@ -13,6 +13,7 @@ from entity import Entity
 from player import Player
 from tile import Wall
 from hud import HUD
+from text_handler import Text
 
 
 def game_loop(
@@ -23,7 +24,7 @@ def game_loop(
     cursor,
     tile_group,
     text_group,
-    enemy_group,
+    enemy_group:pg.sprite.Group,
     droped_item_group,
     mob_cell_pos,
     camera_gap,
@@ -46,9 +47,7 @@ def game_loop(
     deltatime = (
         clock.tick(Entity.FPS) * 0.001
     )  # Garantit un deplacement en pixel/sec constant
-
-    # --- Interaction entre entites ---
-    player_attack_data = None
+    #print(deltatime)
 
     # ==============
     # === INPUTS ===
@@ -125,8 +124,9 @@ def game_loop(
                             player.is_moving = True
 
                 if event.button == 1:  # Clic Gauche
-                    if mouse_cell in mob_cell_pos:
-                        player_attack_data = player.attack_a_mob(mouse_cell)
+                    for enemy in enemy_group:
+                        if mouse_cell == enemy.current_cell_pos:
+                            player.attack_a_mob(enemy)
 
     # ==========================
     # === UPDATE LES SPRITES ===
@@ -169,35 +169,21 @@ def game_loop(
     # === ENEMY ===
     # Update chaque enemy du group
     for enemy in enemy_group:
-        # Si le enemy a pris des degats
-        if player_attack_data is not None and enemy.get_current_cell() == mouse_cell:
-            enemy.take_damage(player_attack_data)
-
         # S'il y a un zoom
         if Entity.is_changing_zoom:
             enemy.zoom_img()
 
-        # --- Update le enemy ---
-        previous_pos, mob_attack_data = enemy.update(
+        # --- Update l'enemy ---
+        enemy.update(
             deltatime,
             camera_gap,
-            player.current_cell_pos,
+            player,
             action_points,
             mob_cell_pos,
             text_group,
             droped_item_group,
             cell_pos_seen,
         )
-
-        # Change les positions des enemys dans mob_coordinates
-        if previous_pos is not None and previous_pos in mob_cell_pos:
-            mob_cell_pos.remove(previous_pos)
-            if enemy.get_is_alive():
-                mob_cell_pos.append(enemy.get_current_cell())
-        # Gere les attaque vers le joueur
-        if mob_attack_data[0] is not None:
-            # Applique les degats au joueur
-            player.take_damage(mob_attack_data)
 
     # === TEXTGROUP ===
     # S'il y a un zoom

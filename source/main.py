@@ -9,14 +9,16 @@
 import pygame as pg
 
 
-# TODO : 
-# Faire que les ennemis se "souvienent" de la dernière pos du joueur
+# TODO :
+# Fix la camera
+# Fix les previous pos
 
 
 # Importation des fichiers secondaires
 from text_handler import Text
-from event_listener import (
+from usefull_fonctions import (
     generate_player,
+    generate_exit,
     generate_hud,
     generate_inv_viewer,
     generate_stash,
@@ -24,7 +26,7 @@ from event_listener import (
 )
 
 from inventory_loop import inventory_view_loop
-from level_generator import level_generator_loop
+from level_generator import generate_level
 from game_loop import game_loop
 from menu_loop import menu_loop
 from settings_loop import settings_loop
@@ -46,7 +48,7 @@ pg.display.set_caption("Echoes of Ruin")
 
 
 screen = pg.display.set_mode((WIDTH, HEIGHT), flags=pg.FULLSCREEN, vsync=1)
-FPS = 30
+FPS = 60
 
 
 # =========================
@@ -63,45 +65,51 @@ def main():
     button_list_main_menu = create_button(
         (400, 100), (40, 40), "Jouer", "Parametres", "Editeur de niveaux", "Quitter"
     )
-    button_list_settings = create_button((400, 100), (40, 40), "Plein Ecran", "Fenetré", "Retour")
-    button_pause_list = create_button((400, 100), (40, 40), "Reprendre", "Menu principal")
+    button_list_settings = create_button(
+        (400, 100), (40, 40), "Plein Ecran", "Fenetré", "Retour"
+    )
+    button_pause_list = create_button(
+        (400, 100), (40, 40), "Reprendre", "Menu principal"
+    )
 
     button_game_over = create_button((400, 100), (40, 40), "Menu principal")[0]
-    
+
     # Creation des textes
-    text_game_over = Text("arial", "Vous êtes mort.", (180, 20, 20), (50, 50), (0, 50), is_resizable=False)
-    text_map_generator = Text("arial", "Chargement", (180, 20, 20), (50, 50), (0, 100), is_resizable=False)
+    text_game_over = Text(
+        "arial", "Vous êtes mort.", (180, 20, 20), (50, 50), (0, 50), is_resizable=False
+    )
+    text_map_generator = Text(
+        "arial", "Chargement", (180, 20, 20), (50, 50), (0, 100), is_resizable=False
+    )
 
     # Creation des groupes
-    tile_group = None
-    enemy_group = None
-    dropped_item_group = None
-    text_group = None
-    
+    tile_group = pg.sprite.Group()
+    enemy_group = pg.sprite.Group()
+    dropped_item_group = pg.sprite.Group()
+    text_group = pg.sprite.Group()
+
     # Garder la position des mobs
-    mob_cell_pos = None
+    mob_cell_pos = []
 
     camera_gap = None
-    exit = None
 
-    # Creation des objets
+    # Creation des objets permanents
     player = generate_player()
+    exit = generate_exit()
     stash = generate_stash(screen.get_size(), player)
     camera, cursor, hud = generate_hud()
     inv_viewer = generate_inv_viewer(screen.get_size(), player)
 
     # Mode
     mode = "main_menu"
-    
+
     # Booleens
     is_map_editor = False
     is_refresh = False
     is_level_created = False
-    
-    
+
     ambiance_sound = pg.mixer.music.load("assets/sons/ambiances/Catacombs.mp3")
-    
-    
+
     # =========================
     # === BOUCLE PRINCIPALE ===
     # =========================
@@ -134,7 +142,7 @@ def main():
                     camera_gap,
                     hud,
                     exit,
-                    stash
+                    stash,
                 )
 
             case "inventory":
@@ -143,15 +151,17 @@ def main():
             case "generate_level":
                 (
                     mode,
-                    tile_group,
-                    enemy_group,
+                    is_level_created,
+                ) = generate_level(
+                    screen,
+                    text_map_generator,
                     dropped_item_group,
+                    enemy_group,
+                    tile_group,
                     text_group,
-                    mob_cell_pos,
+                    player,
                     exit,
-                    is_level_created
-                ) = level_generator_loop(
-                    screen, text_map_generator, dropped_item_group, player
+                    mob_cell_pos
                 )
 
                 player_px_pos = player.get_px_pos()
@@ -162,7 +172,13 @@ def main():
 
             case "stash":
                 run, mode, is_refresh = stash_loop(
-                    screen, clock, stash, player, inv_viewer, is_refresh, is_level_created
+                    screen,
+                    clock,
+                    stash,
+                    player,
+                    inv_viewer,
+                    is_refresh,
+                    is_level_created
                 )
 
             case "game_over":
@@ -175,13 +191,20 @@ def main():
                     text_game_over,
                     player,
                     inv_viewer,
-                    stash
+                    stash,
                 )
                 is_level_created = False
 
             case "pause":
                 run, mode, player = pause_loop(
-                    screen, clock, run, mode, button_pause_list, player, inv_viewer, stash
+                    screen,
+                    clock,
+                    run,
+                    mode,
+                    button_pause_list,
+                    player,
+                    inv_viewer,
+                    stash,
                 )
 
             case "level_editor":

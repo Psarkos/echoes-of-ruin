@@ -15,7 +15,7 @@ from entity import Entity
 from inventory import Inventory
 from counter import Counter
 from text_handler import Text, TextHandler
-from usefull_fonctions import get_signed_number, get_stat_display_name
+from usefull_fonctions import get_sign_of_number, get_stat_display_name
 from ray_caster import is_case_lookable
 
 
@@ -92,7 +92,8 @@ class Player(Entity):
         }
 
         # Correspond aux stats apres que les effets les changent
-
+        
+        self.action_points = 0
         self.is_attacking = False
 
         # === INVENTAIRE ET EFFETS===
@@ -101,7 +102,6 @@ class Player(Entity):
 
         # === TEXT ===
         self.text_list = TextHandler()
-        
         
         # === SOUND ===
         self.is_walk_sound_active = False
@@ -115,11 +115,14 @@ class Player(Entity):
     # === PATHFINDER ET DEPLACEMENT ===
     # =================================
 
-    def find_path(self, mob_coordinates=[]):
+    def find_path(self, mob_cell_pos=[], ignore_last_pos=True):
         """Trouve le chemin le plus court entre la position du joueur et la cible"""
-        var = aStar(Entity.MAP, self.current_cell_pos, self.end_pos, mob_coordinates)
-        if var is not None:  # Si le chemin existe
-            self.path = var[1:]
+        path = aStar(Entity.MAP, self.current_cell_pos, self.end_pos, mob_cell_pos)
+        if path is not None:  # Si le chemin existe
+            if ignore_last_pos :
+                self.path = path[1:-1]
+            else :
+                self.path = path[1:]
             return len(self.path) > 0
         else:
             return False
@@ -143,44 +146,38 @@ class Player(Entity):
     def get_is_alive(self):
         return self.dic_stats["health"] > 0
 
-    def attack_a_mob(self, mob_pos: tuple):
+    def attack_a_mob(self, enemy):
         """Fait l'action d'ataquer.
 
         Retourne None si n'est pas a portee
         """
         if (
             self.dic_stats["attack_range"] > 1
-            and abs(self.current_cell_pos[0] - mob_pos[0])
-            + abs(self.current_cell_pos[1] - mob_pos[1])
+            and abs(self.current_cell_pos[0] - enemy.current_cell_pos[0])
+            + abs(self.current_cell_pos[1] - enemy.current_cell_pos[1])
             <= self.dic_stats["attack_range"]
-            or abs(self.current_cell_pos[0] - mob_pos[0])
+            or abs(self.current_cell_pos[0] - enemy.current_cell_pos[0])
             <= self.dic_stats["attack_range"]
             <= 1
-            and abs(self.current_cell_pos[1] - mob_pos[1])
+            and abs(self.current_cell_pos[1] - enemy.current_cell_pos[1])
             <= self.dic_stats["attack_range"]
             <= 1
         ):
             if is_case_lookable(
                 Entity.MAP, 
                 self.current_cell_pos, 
-                mob_pos
+                enemy.current_cell_pos
             ):
                 self.is_attacking = True
                 self.is_moving = False
-                return (
+                enemy.take_damage(
                     self.dic_stats["attack"],
                     self.dic_stats["penetration"],
                     self.dic_stats["precision"],
                 )
-        return None
 
-    def take_damage(self, attack_data):
-        """Aplique les degats brute.
-
-        Retourne les degats reelement infliges"""
-        raw_damage = attack_data[0]
-        penetration = attack_data[1]
-        precision = attack_data[2]
+    def take_damage(self, raw_damage, penetration, precision):
+        """Aplique les degats en fonction des stats de l'attaquant et du defenseur."""
         # Arrete le joueur
         self.is_moving = False
         # Dodge
@@ -261,7 +258,7 @@ class Player(Entity):
                     self.text_list.add_text(
                         Text(
                             "arial",
-                            get_stat_display_name(key) + get_signed_number(value),
+                            get_stat_display_name(key) + get_sign_of_number(value),
                             (255, 0, 0),
                             (10, 10),
                             (
@@ -279,7 +276,7 @@ class Player(Entity):
                     self.text_list.add_text(
                         Text(
                             "arial",
-                            get_stat_display_name(key) + get_signed_number(value),
+                            get_stat_display_name(key) + get_sign_of_number(value),
                             (0, 255, 0),
                             (10, 10),
                             (
@@ -314,7 +311,7 @@ class Player(Entity):
         self,
         deltatime: float,
         camera_gap: tuple,
-        mob_coordinates: tuple,
+        mob_cell_pos:list,
         textgroup: pg.sprite.Group,
     ):
         """Update la position du joueur"""
@@ -327,17 +324,15 @@ class Player(Entity):
             textgroup.add(text)
         self.text_list.clear_updatable_text_list()
 
-        action_points = 0  # Indique le nombre de tours qu'auront les mobs
+        action_points = 0 # Indique le nombre de tours qu'auront les mobs
 
         # SI LE JOUEUR EST SUR UNE CELULE
         if self.is_on_cell:
 
             #  SI LE JOUEUR SE DEPLACE
             if self.is_moving:  # Si le joueur se deplace
-                
-                
 
-                if self.find_path(mob_coordinates):  # S'il existe un chemin
+                if self.find_path(mob_cell_pos, False):  # S'il existe un chemin
                     self.current_cell_pos = self.path.pop(0)
                     self.is_on_cell = False
                     self.counter.start()

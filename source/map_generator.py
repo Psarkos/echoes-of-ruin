@@ -62,7 +62,6 @@ def map_generator(
     remove_ground_from_map_and_add_to_tilegroup(
         map, tilegroup
     )  # Retire tous les Ground de la map
-
     return map
 
 

@@ -12,7 +12,7 @@ from player import Player
 from entity import Entity
 from text_handler import Text
 from button import ClickableObject
-from event_listener import create_button
+from usefull_fonctions import create_button
 from item import ConsumableItem, EquipableItem
 from inventory_loop import ItemSlotHolder, ItemStatViewer, EquipementSlotHolder
 

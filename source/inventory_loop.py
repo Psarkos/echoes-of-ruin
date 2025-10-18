@@ -12,11 +12,11 @@ from item import Item, ConsumableItem, EquipableItem
 from button import ClickableObject
 from usefull_fonctions import (
     scale_by,
-    get_signed_number,
+    get_sign_of_number,
     get_stat_display_name,
-    get_equipment_display_name
-)
-from event_listener import create_button
+    get_equipment_display_name,
+    create_button,
+    )
 from inventory import Inventory
 from text_handler import Text
 from entity import Entity
@@ -147,7 +147,8 @@ class ItemStatViewer(Entity):
                 self.text_list.append(
                     Text(
                         "arial",
-                        "Type : " + get_equipment_display_name(self.item.equipement_type),
+                        "Type : "
+                        + get_equipment_display_name(self.item.equipement_type),
                         (0, 0, 0),
                         (12 * self.zoom, 12 * self.zoom),
                         (20, 40 * len(self.text_list) + 40),
@@ -157,10 +158,9 @@ class ItemStatViewer(Entity):
                 )
 
                 if (
-                    (self.item.equipement_type == "main_weapon"
-                    or self.item.equipement_type == "secondary_weapon")
-                    and self.item.is_weapon_two_handed
-                ):
+                    self.item.equipement_type == "main_weapon"
+                    or self.item.equipement_type == "secondary_weapon"
+                ) and self.item.is_weapon_two_handed:
                     self.text_list.append(
                         Text(
                             "arial",
@@ -190,7 +190,7 @@ class ItemStatViewer(Entity):
                     self.text_list.append(
                         Text(
                             "arial",
-                            get_stat_display_name(key) + get_signed_number(value),
+                            get_stat_display_name(key) + get_sign_of_number(value),
                             (0, 0, 0),
                             (12 * self.zoom, 12 * self.zoom),
                             (30, 40 * len(self.text_list) + 40),
@@ -228,7 +228,7 @@ class ItemStatViewer(Entity):
                         self.text_list.append(
                             Text(
                                 "arial",
-                                get_stat_display_name(key) + get_signed_number(value),
+                                get_stat_display_name(key) + get_sign_of_number(value),
                                 (0, 0, 0),
                                 (12 * self.zoom, 12 * self.zoom),
                                 (40, 40 * len(self.text_list) + 40),

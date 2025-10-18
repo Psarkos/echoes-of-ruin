@@ -4,7 +4,7 @@ import pygame as pg
 
 from entity import Entity
 from button import ClickableObject
-from event_listener import generate_player
+from usefull_fonctions import generate_player
 
 pg.init()
 
