@@ -1,0 +1,5 @@
+pandas
+csv
+pygame
+os
+random

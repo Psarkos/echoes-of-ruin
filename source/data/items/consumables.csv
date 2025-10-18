@@ -1,0 +1,3 @@
+nom,img_link,quatity,quantity_max,is_stackable,effects_list,stats
+Potion de Vie,others/health_potion.png,5,10,1,Heal.2.1.health/Boost de vitesse.1.0.movement_time,health.10/movement_time.-5
+Potion de vitesse,others/speed_potion.png,5,10,1,Boost de vitesse.5.0.movement_time,movement_time.-15
