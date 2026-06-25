@@ -52,3 +52,7 @@ Python 3.14
 
 ## Licence
 Ce projet est sous licence MIT - voir le fichier licence.txt pour plus d’informations.  
+
+## À propos
+
+Ce projet a été fait en 2025 en classe de terminale. J'ai apporté quelques modifications mineures entre-temps (corrections de bugs, amélioration de certains aspects...) mais le jeu reste globalement dans son état initial (il reste encore des bugs).
